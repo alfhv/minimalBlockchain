@@ -1,0 +1,6 @@
+.vs/
+csharp/minimalBlockchain.API/bin/
+csharp/minimalBlockchain.API/obj/
+csharp/minimalBlockchain.Console/bin/
+csharp/minimalBlockchain.Console/obj/
+csharp/packages/
