@@ -1,59 +1,89 @@
+﻿using System;
+using System.Text;
+using NBitcoin;
+using QBitNinja.Client;
+
 namespace bitcoinClient.Console
 {
-  class Program
+    class Program
     {
-        static string TestNet_privateKey = "??";
+        static string TestNet_privateKey = "cTBsZLTY87BjTwhzdqRDPnXkfvWFH7pkYB5zKsDQsGL7TT5qef9Y";
         static string TestNet_bitcoinAddress = "n4aL4nx7SjzdvNeqf8MhXFJkVLgo85LxNc";
         static string TestNet_TxId = "a52ec45756f86594bf0231ae893d6ab77c68cc110ac766f30c369190f5acd470";
-        
-        static void Main_CreateTransaction(string[] args)
+
+        static string Testnet_receiverAddress = "mvjXv5QrHR769RcvwaTzPkE4dqLNPgtctn";
+        static string Testnet_receiverPrivateKey = "cSvDZdxgir4mZEnsXR4VsNcQ29VePpXab7VSWWkYYhqKFYaapVP7";
+
+        static void Main(string[] args)
+        {
+            /*
+            var privateKey = new Key();
+            var testnetPrivateKey = privateKey.GetBitcoinSecret(Network.TestNet);
+            System.Console.WriteLine(testnetPrivateKey);
+
+            var testnet_receiver_address = testnetPrivateKey.GetAddress();
+              */
+
+            Main_CreateTransaction();
+
+            System.Console.WriteLine("Hello World!");
+        }
+
+        static void Main_CreateTransaction()
         {
             var bitcoinPrivateKey = new BitcoinSecret(TestNet_privateKey);
             var network = bitcoinPrivateKey.Network;
             var address = bitcoinPrivateKey.GetAddress();
 
-            Console.WriteLine("bitcoinPrivateKey: " + bitcoinPrivateKey); 
-            Console.WriteLine("address calculated: " + address);
-            Console.WriteLine("address expected  : " + TestNet_bitcoinAddress);
+            System.Console.WriteLine("bitcoinPrivateKey: " + bitcoinPrivateKey);
+            System.Console.WriteLine("address calculated: " + address);
+            System.Console.WriteLine("address expected  : " + TestNet_bitcoinAddress);
 
-            TestNet_TxId = "781464f497dca89c40ed9c8329c80045a92bc822ef4b81ff30b9bff67a5201d0";
+            TestNet_TxId = "08e88a752f165be9ee31155b79038052d2d5710f561bbb2a8c082bbab92cbf0d";// "dba5eaed767c96365ace964ded6d3c1fa50a7c545262c95edc20005a5052e350";
             var client = new QBitNinjaClient(network);
 
             var transactionId = uint256.Parse(TestNet_TxId);
             var transactionResponse = client.GetTransaction(transactionId).Result;
 
-            if (transactionResponse.Block == null || transactionResponse.Block.Confirmations == 0)
+            if (transactionResponse.Block == null || transactionResponse.Block == null || transactionResponse.Block.Confirmations == 0)
             {
-                Console.WriteLine("Transaction not Confirmed yet");
+                System.Console.WriteLine("Transaction not Confirmed yet");
             }
 
-            Console.WriteLine("TransactionId: " + transactionResponse.TransactionId); 
-            Console.WriteLine("Confirmations: " + transactionResponse.Block.Confirmations);
+            System.Console.WriteLine("TransactionId: " + transactionResponse.TransactionId);
+            System.Console.WriteLine("Confirmations: " + transactionResponse.Block.Confirmations);
 
             var receivedCoins = transactionResponse.ReceivedCoins;
-            OutPoint outPointToSpend = null;
+
+            ICoin coinToSpend = null;
 
             foreach (var coin in receivedCoins)
             {
-                Console.Write("ReceivedCoins: " + coin.Amount);
+                System.Console.Write("ReceivedCoins: " + coin.Amount);
                 if (coin.TxOut.ScriptPubKey == bitcoinPrivateKey.ScriptPubKey)
                 {
-                    outPointToSpend = coin.Outpoint;
-                    Console.WriteLine("...belong to us.");
-                } else Console.WriteLine("...NOT ours.");
+                    coinToSpend = coin;
+                    System.Console.WriteLine("...belong to us.");
+                }
+                else System.Console.WriteLine("...NOT ours.");
+
+                if ((Money)coin.Amount == Money.Zero)
+                {
+                    System.Console.WriteLine($"found a custom msg:{Encoding.UTF8.GetString(coin.GetScriptCode().ToBytes())}");
+                }
             }
 
-            var transaction = new Transaction();
-            transaction.Inputs.Add(new TxIn()
+            var transaction = Transaction.Create(bitcoinPrivateKey.Network);
+            transaction.AddInput(new TxIn()
             {
-                PrevOut = outPointToSpend
-            });
-
-            var receiverAddress = BitcoinAddress.Create("mzp4No5cmCXjZUpf112B1XWsvWBfws5bbB"); // receiver address
-            var moneyToReceiver = new Money(0.5m, MoneyUnit.BTC);
+                PrevOut = coinToSpend.Outpoint
+            });           
+            
+            var receiverAddress = BitcoinAddress.Create("mzp4No5cmCXjZUpf112B1XWsvWBfws5bbB", Network.TestNet); // receiver address
+            var moneyToReceiver = new Money(0.01m, MoneyUnit.BTC);
             var minerFee = new Money(0.0001m, MoneyUnit.BTC);
 
-            var txInAmount = (Money)receivedCoins[(int)outPointToSpend.N].Amount;
+            var txInAmount = (Money)coinToSpend.Amount;
             Money changeBackAmount = txInAmount - moneyToReceiver - minerFee;
 
             TxOut receiverTxOut = new TxOut()
@@ -80,55 +110,21 @@ namespace bitcoinClient.Console
             });
 
             transaction.Inputs[0].ScriptSig = bitcoinPrivateKey.ScriptPubKey;
-            transaction.Sign(bitcoinPrivateKey, false);
+
+            transaction.Sign(secret: bitcoinPrivateKey, assumeP2SH: false);
 
             var broadcastResponse = client.Broadcast(transaction).Result;
 
-            if (!broadcastResponse.Success)
+            if (!broadcastResponse.Success || broadcastResponse.Error != null)
             {
-                Console.Error.WriteLine("ErrorCode: " + broadcastResponse.Error.ErrorCode);
-                Console.Error.WriteLine("Error message: " + broadcastResponse.Error.Reason);
+                System.Console.Error.WriteLine("ErrorCode: " + broadcastResponse.Error.ErrorCode);
+                System.Console.Error.WriteLine("Error message: " + broadcastResponse.Error.Reason);
             }
             else
             {
-                Console.WriteLine("Success! You can check out the hash of the transaciton in any block explorer:");
-                Console.WriteLine("hash: " + transaction.GetHash());
+                System.Console.WriteLine("Success! You can check out the hash of the transaciton in any block explorer:");
+                System.Console.WriteLine("hash: " + transaction.GetHash());
             }
         }
-        
-static void Main_ExploreTransaction(string[] args)
-        {
-            var client = new QBitNinjaClient(Network.TestNet);
-
-            var transactionId = uint256.Parse("94b56c61e3cee09bc8c18fe22dc695e59b80aea5c0fe1a1c31d64cd09dc6af6d");
-            var transactionResponse = client.GetTransaction(transactionId).Result;
-            var transaction = transactionResponse.Transaction;
-
-            Console.WriteLine(transactionResponse.TransactionId);
-            Console.WriteLine(transaction.GetHash());
-
-            var outputs = transaction.Outputs;
-            foreach (TxOut output in outputs)
-            {
-                Money amount = output.Value;
-
-                Console.WriteLine($"amount: {amount.ToDecimal(MoneyUnit.BTC)}");
-                var paymentScript = output.ScriptPubKey;
-                Console.WriteLine($"ScriptPubKey: {paymentScript}");  // It's the ScriptPubKey
-                var address = paymentScript.GetDestinationAddress(Network.TestNet);
-                Console.WriteLine($"address: {address}");
-                Console.WriteLine();
-            }
-
-            var inputs = transaction.Inputs;
-            foreach (TxIn input in inputs)
-            {
-                OutPoint previousOutpoint = input.PrevOut;
-                Console.WriteLine($"previousOutpoint.Hash: {previousOutpoint.Hash}"); // hash of prev tx
-                Console.WriteLine($"previousOutpoint.N: {previousOutpoint.N}"); // idx of out from prev tx, that has been spent in the current tx
-                Console.WriteLine();
-            }
-
-        }        
-      }
-}        
+    }
+}

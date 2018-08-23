@@ -4,3 +4,5 @@ csharp/minimalBlockchain.API/obj/
 csharp/minimalBlockchain.Console/bin/
 csharp/minimalBlockchain.Console/obj/
 csharp/packages/
+csharp/bitcoinClient.Console/bin/
+csharp/bitcoinClient.Console/obj/
