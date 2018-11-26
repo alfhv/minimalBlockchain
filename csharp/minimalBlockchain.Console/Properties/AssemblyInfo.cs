@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("minimalBlockchain.Console")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("NATIXIS")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("minimalBlockchain.Console")]
-[assembly: AssemblyCopyright("Copyright © NATIXIS 2018")]
+[assembly: AssemblyCopyright("Copyright © 2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
